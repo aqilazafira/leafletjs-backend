@@ -25,20 +25,46 @@ const MONGO_URI = process.env.MONGO_GIS;
 
 // Validasi MONGO_URI
 if (!MONGO_URI) {
-  console.error("❌ Error: MONGO_GIS tidak ditemukan di file .env");
+  console.error("❌ Error: MONGO_GIS tidak ditemukan di environment variables");
   process.exit(1);
 }
 
-mongoose
-  .connect(MONGO_URI)
-  .then(() => {
+// MongoDB Connection dengan error handling untuk serverless
+let isConnected = false;
+
+const connectDB = async () => {
+  if (isConnected) {
+    console.log("✅ Using existing MongoDB connection");
+    return;
+  }
+
+  try {
+    const db = await mongoose.connect(MONGO_URI, {
+      serverSelectionTimeoutMS: 5000,
+      socketTimeoutMS: 45000,
+    });
+
+    isConnected = db.connections[0].readyState === 1;
     console.log("✅ MongoDB connected");
     console.log("📂 Database:", mongoose.connection.db.databaseName);
-  })
-  .catch((err) => {
+  } catch (err) {
     console.error("❌ MongoDB connection error:", err.message);
-    process.exit(1);
-  });
+    throw err;
+  }
+};
+
+// Middleware untuk connect DB sebelum setiap request
+app.use(async (req, res, next) => {
+  try {
+    await connectDB();
+    next();
+  } catch (error) {
+    res.status(500).json({
+      message: "Database connection failed",
+      error: error.message
+    });
+  }
+});
 
 app.get("/", (req, res) => {
   res.json({
@@ -47,14 +73,21 @@ app.get("/", (req, res) => {
       "GET /api/locations - Get all locations",
       "POST /api/locations - Create location",
       "DELETE /api/locations/:id - Delete location"
-    ]
+    ],
+    timestamp: new Date().toISOString()
   });
 });
 
 // Route API
 app.use("/api/locations", placesRouter);
 
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
-  console.log(`📡 API available at http://localhost:${PORT}/api/locations`);
-});
+// For Vercel serverless
+if (process.env.VERCEL) {
+  export default app;
+} else {
+  // For local development
+  app.listen(PORT, () => {
+    console.log(`🚀 Server running on http://localhost:${PORT}`);
+    console.log(`📡 API available at http://localhost:${PORT}/api/locations`);
+  });
+}
