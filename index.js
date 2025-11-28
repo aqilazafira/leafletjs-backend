@@ -10,10 +10,12 @@ dotenv.config();
 
 const app = express();
 
-// CORS Configuration - Allow all origins in development
+// CORS Configuration - Allow all origins
 app.use(cors({
   origin: '*',
-  credentials: true
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
 app.use(express.json());
@@ -24,8 +26,6 @@ const MONGO_URI = process.env.MONGO_GIS;
 // Validasi MONGO_URI
 if (!MONGO_URI) {
   console.error("❌ Error: MONGO_GIS tidak ditemukan di file .env");
-  console.error("💡 Pastikan file .env ada dan berisi:");
-  console.error("   MONGO_GIS=mongodb://localhost:27017/GIS");
   process.exit(1);
 }
 
@@ -41,7 +41,14 @@ mongoose
   });
 
 app.get("/", (req, res) => {
-  res.json({ message: "Leaflet backend up ✅" });
+  res.json({
+    message: "Leaflet backend up ✅",
+    endpoints: [
+      "GET /api/locations - Get all locations",
+      "POST /api/locations - Create location",
+      "DELETE /api/locations/:id - Delete location"
+    ]
+  });
 });
 
 // Route API
@@ -49,4 +56,5 @@ app.use("/api/locations", placesRouter);
 
 app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
+  console.log(`📡 API available at http://localhost:${PORT}/api/locations`);
 });
