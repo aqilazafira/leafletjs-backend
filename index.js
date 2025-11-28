@@ -9,7 +9,13 @@ import placesRouter from "./routes/place.js";
 dotenv.config();
 
 const app = express();
-app.use(cors());
+
+// CORS Configuration - Allow all origins in development
+app.use(cors({
+  origin: '*',
+  credentials: true
+}));
+
 app.use(express.json());
 
 const PORT = process.env.PORT || 5000;
@@ -24,8 +30,11 @@ if (!MONGO_URI) {
 }
 
 mongoose
-  .connect(MONGO_URI, { dbName: "GIS" })
-  .then(() => console.log("✅ MongoDB connected"))
+  .connect(MONGO_URI)
+  .then(() => {
+    console.log("✅ MongoDB connected");
+    console.log("📂 Database:", mongoose.connection.db.databaseName);
+  })
   .catch((err) => {
     console.error("❌ MongoDB connection error:", err.message);
     process.exit(1);
